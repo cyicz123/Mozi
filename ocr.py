@@ -1,5 +1,7 @@
+import logging
 import os
 import json
+import shutil
 import numpy as np
 from paddleocr import PaddleOCR
 import pyheif
@@ -7,6 +9,36 @@ from PIL import Image
 from collections import defaultdict
 from tqdm import tqdm
 import paddle
+
+class ImageConverter:
+    def __init__(self, src_dir, dst_dir) -> None:
+        self.src_dir = src_dir
+        self.dst_dir = dst_dir
+        self.logger = logging.getLogger('ImageConverter')
+        self.logger.setLevel(logging.DEBUG)
+    
+    def __call__(self):
+        if not os.path.exists(self.dst_dir):
+            os.makedirs(self.dst_dir)
+        
+        for file in os.listdir(self.src_dir):
+            image_format_endwith = ('.png', '.heic', '.jpg', '.jpeg', 'webp', 'tif', 'bmp')
+            if file.lower().endswith(image_format_endwith):
+                src_file = os.path.join(self.src_dir, file)
+                dst_file = os.path.join(self.dst_dir, file.replace(file.split('.')[-1], 'jpg'))
+
+                if file.endswith('.heic'):
+                    heif = pyheif.read(src_file)
+                    image = Image.frombytes(
+                        heif.mode, heif.size, heif.data, "raw", heif.mode, heif.photometric_interpretation, heif.origin
+                    )
+                    image = image.convert('RGB')  # 确保图像为RGB格式
+                    image.save(dst_file, 'JPEG')
+                else:
+                    shutil.copy(src_file, dst_file)
+            else:
+                self.logger.error(f"Unsupported file type: {file}")
+        
 
 class ImageProcessor:
     def __init__(self, source_dir, target_dir):
@@ -140,6 +172,8 @@ if __name__ == "__main__":
     source_dir = 'data/chinese'  # 源目录
     target_dir = 'data/result'  # 目标目录
 
+    converter  = ImageConverter(source_dir, target_dir)
+    converter()
     processor = ImageProcessor(source_dir, target_dir)
     processor.process_images()
     # image_ndarray = processor.convert_heic_to_ndarray('/paddle/dataset/result/90/艾_1.heic')
