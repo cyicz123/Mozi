@@ -1,0 +1,4 @@
+# paddlepaddle-gpu
+paddlepaddle==2.5.2
+paddleocr==2.8.1
+pyheif==0.7.1

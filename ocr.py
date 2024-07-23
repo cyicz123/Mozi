@@ -6,6 +6,7 @@ import pyheif
 from PIL import Image
 from collections import defaultdict
 from tqdm import tqdm
+import paddle
 
 class ImageProcessor:
     def __init__(self, source_dir, target_dir):
@@ -18,9 +19,18 @@ class ImageProcessor:
 
         self.processed_files_path = os.path.join(target_dir, ".processed_files")
         self.count_map_path = os.path.join(target_dir, ".count_map.json")
-        self.ocr = PaddleOCR(use_angle_cls=True, lang='ch', drop_score=0, show_log=False,
-                             rec_model_dir='/paddle/paddle-ocr/PaddleOCR/ch_PP-OCRv4_rec_server_infer')
-        # self.ocr = PaddleOCR(use_angle_cls=True, lang='ch', drop_score=0, show_log=False)
+        if paddle.is_compiled_with_cuda():
+            # 尝试将设备设置为GPU
+            print("GPU is available, using GPU")
+            paddle.set_device('gpu')
+            self.ocr = PaddleOCR(use_angle_cls=True, lang='ch', drop_score=0, show_log=False,
+                                rec_model_dir='models/ch_PP-OCRv4_rec_server_infer',
+                                use_gpu=True)
+        else:
+            print("GPU is not available, using CPU")
+            self.ocr = PaddleOCR(use_angle_cls=True, lang='ch', drop_score=0, show_log=False,
+                                use_gpu=False)
+        
 
         self.processed_files = self.get_processed_files()
         self.processed_files_handle = open(self.processed_files_path, 'a')
@@ -127,12 +137,14 @@ class ImageProcessor:
 
 if __name__ == "__main__":
     # source_dir = '/paddle/dataset/chinese'  # 源目录
-    source_dir = '/paddle/dataset/result/unprocessed'  # 源目录
-    target_dir = '/paddle/dataset/result'  # 目标目录
+    source_dir = 'data/chinese'  # 源目录
+    target_dir = 'data/result'  # 目标目录
 
     processor = ImageProcessor(source_dir, target_dir)
     processor.process_images()
     # image_ndarray = processor.convert_heic_to_ndarray('/paddle/dataset/result/90/艾_1.heic')
     # text, confidence = processor.recognize_text(image_ndarray)
+    # image = Image.fromarray(image_ndarray)
+    # image.save('test.jpg', 'JPEG')
     # print(text)
     # print(confidence)
