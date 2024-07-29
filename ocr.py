@@ -9,6 +9,14 @@ from collections import defaultdict
 from tqdm import tqdm
 import paddle
 import threading
+from opencc import OpenCC
+
+class TraditionalToSimplified:
+    def __init__(self):
+        self.cc = OpenCC('t2s')
+
+    def Convert(self, text):
+        return self.cc.convert(text)
 
 class ImageConverter:
     def __init__(self, src_dir, dst_dir, num_threads=4) -> None:
@@ -121,6 +129,8 @@ class ImageProcessor:
 
         # 加载已处理文件列表
         self.file_count_map = FileNameCountMap(target_dir)
+        # 创建繁体转换类
+        self.traditional_to_simp = TraditionalToSimplified()
 
     def recognize_text(self, image_file):
         try:
@@ -146,6 +156,7 @@ class ImageProcessor:
 
             # 如果识别到文字，按要求重命名和移动文件
             if text and confidence:
+                text = self.traditional_to_simp.Convert(text)
                 new_filename = f"{text}_{self.file_count_map.GetValue(text)}.jpg"
                 confidence_level = str(int(confidence * 100 // 10 * 10))
                 target_path = os.path.join(self.target_dir, confidence_level, new_filename)
